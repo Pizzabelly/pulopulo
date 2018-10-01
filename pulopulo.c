@@ -119,20 +119,43 @@ int space_occupied(struct game* g, int x, int y) {
 }
 
 /* recurse through every puyo and check for matching colors */
-void match_puyos(struct game* g, int p) {
-    direction dirs[4] = {UP, DOWN, LEFT, RIGHT};
-    for (int i = 0; i < 4; i++) {
-        point offset = get_offset(dirs[i]);
+void match_puyos(struct game* g, struct puyo_buffer* b, int p) {
+    direction dir[4] = {UP, DOWN, LEFT, RIGHT};
+    for (int d = 0; d < 4; d++) {
+        point offset = get_offset(dir[d]);
         int next = space_occupied(g, g->puyos[p].pos.x + offset.x, g->puyos[p].pos.y + offset.y);
-        if (next >= 0 && next < MAX_PUYOS + 1) {
-            if (g->puyos[p].color == g->puyos[next].color) {
-                if (g->removable_count == 0) {
-                    g->removable[g->removable_count] = p;
-                    g->removable_count++;
+        if (next < 0 || next == MAX_PUYOS + 1) continue;
+        if (g->puyos[p].color == g->puyos[next].color) {
+            if (b->count == 0) {
+                b->buffer[b->count] = p;
+                b->count++;
+            }
+            bool prev_match = false;
+            for (int a = 0; a < b->count; a++) {
+                if (b->buffer[a] == next) prev_match = true;
+            }
+            if (!prev_match) {
+                b->buffer[b->count] = next;
+                b->count++;
+                match_puyos(g, b, next);
+            }
+        }
+    }
+}
+
+void clear_puyos(struct game* g) {
+    for (int p = 0; p < g->puyo_count; p++) {
+        struct puyo_buffer b;
+        b.count = 0;
+        match_puyos(g, &b, p);
+
+        if (b.count >= 4) {
+            for (int r = 0; r < b.count; r++) {
+                printf("%i\n", b.buffer[r]);
+                for (int i = b.buffer[r]; i < g->puyo_count - 1; i++) {
+                    g->puyos[i] = g->puyos[i + 1];
                 }
-                g->removable[g->removable_count] = next;
-                g->removable_count++;
-                match_puyos(g, next);
+                g->puyo_count--;
             }
         }
     }
@@ -176,20 +199,6 @@ void update_board(struct game* g, point offset) {
         if (g->puyos[p].active) {
             update_puyo_pos(g, &g->puyos[p], offset);
         }
-    }
-    for (int p = 0; p < g->puyo_count; p++) {
-        match_puyos(g, p);
-    }
-    /* remove matched puyos, if there are any */
-    if (g->removable_count > 0) {
-        for (int r = 0; r < g->removable_count; r++) {
-            for (int i = g->removable[r]; i < g->puyo_count - 1; i++) {
-                g->puyos[i] = g->puyos[i + 1];
-            }
-            g->puyo_count--;
-        }
-        g->removable_count = 0;
-        memset(g->removable, 0, MAX_PUYOS * sizeof(int));
     }
 }
 
@@ -244,7 +253,7 @@ int main(void) {
     char c; // input character
     /* main game loop */
     while(true) {
-
+    
         /* handle inputs */
         c = getch();
         if (c == 'q') {
@@ -255,9 +264,11 @@ int main(void) {
             update_board(&g, get_offset(LEFT));
         } else if (c == 'd') {
             update_board(&g, get_offset(RIGHT));
+        } else if (c == 's') {
+            update_board(&g, get_offset(DOWN));
         }
 
-        /* no matter if there was an input or not, update the board for this frame */
+        /* no matter if there was an input or not, update the board for this frame */ 
         erase();
         print_drawable(&g);
         print_puyos(&g);
@@ -270,6 +281,7 @@ int main(void) {
             update_board(&g, get_offset(DOWN));
         }
         if (!any_active_puyos(&g)) new_puyos(&g);
+        clear_puyos(&g);
     }
 
     /* quit cleanly */

@@ -1,5 +1,6 @@
 # the compiler: gcc or what ever compiler is in CC env
-CC = gcc
+all: CC = gcc
+win: CC = cl.exe 
 
 # compiler flags:
 #  -g        adds debugging information to the executable file
@@ -15,7 +16,8 @@ debug: executable
 
 # linker flags
 #  -lncurses link ncurses for the terminal interface
-LDFLAGS  = -lncursesw
+all: LDFLAGS  = -lncursesw
+win: LDFLAGS  = -lpdcurses
 
 executable: pulopulo.c
 	$(CC) $(CFLAGS) -o pulopulo pulopulo.c $(LDFLAGS)

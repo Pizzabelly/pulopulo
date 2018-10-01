@@ -47,6 +47,12 @@ typedef struct {
     color_t color;
 } puyo;
 
+/* buffer of puyo indexes */
+struct puyo_buffer {
+    int buffer[MAX_PUYOS];
+    int count;
+};
+
 /* struct for the game instance */
 struct game {
     /* frame counter */
